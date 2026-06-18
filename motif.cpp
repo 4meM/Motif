@@ -2,7 +2,7 @@
 #include "alineamiento-multiple.h"
 #include <set>
 using vectorKmers =  vector<map<string, int>*>;
-
+using posCandidato = map<string,vector<vector<int>>>;
 
 void allKmers(vectorKmers &perfiles, vector<string>& chains, int k){
     for(int i = 0; i < chains.size(); i++){
@@ -39,11 +39,76 @@ map<string, int> kmersFrecuente(const vectorKmers &perfiles) {
     return analizados; 
 }
 
+vector<string> kmersCandidatos(map<string,int> analizados){
+    vector<string> candidatos;
+    int mayor = 0;
+    for(auto it : analizados){
+        if(it.second > mayor){
+            mayor = it.second;
+        } 
+    }
+    for(auto it : analizados){
+        if(it.second == mayor){
+            candidatos.push_back(it.first);
+        }
+    }
+    return candidatos;
+}
+
+
+posCandidato findPositionCandidatos(vector<string>& candidatos, vector<string>& chains){
+    posCandidato posCandidatos;
+    for(int i = 0; i < candidatos.size(); i++){
+        vector<vector<int>> posicionesAllSecuencias;
+        string cand = candidatos[i];
+        for(int j = 0; j < chains.size(); j++){
+            vector<int> posUnCandidato;
+            size_t pos = chains[j].find(cand, 0);
+            while(pos != string::npos){
+                posUnCandidato.push_back(static_cast<int>(pos));
+                pos = chains[j].find(cand, pos + 1);
+            }
+            posicionesAllSecuencias.push_back(posUnCandidato); 
+        }
+        posCandidatos[cand] = posicionesAllSecuencias;
+    }
+    return posCandidatos;
+}
+
 void mayoresKmers(map<string,int>& analizados){
     for(auto it : analizados){
         cout << it.first << " " << it.second << "\n";
     }
     cout << "\n";
+}
+
+void printKmersCandidatos(vector<string>& candidatos){
+    cout << "=========================================" << endl;
+    cout << " CANDIDATOS "  << endl;
+    cout << "=========================================" << endl;
+
+    for(auto it : candidatos){
+        cout<< it << endl;
+    }
+    cout << "\n\n\n";
+}
+
+void printPositionCandidatos(const posCandidato& misPosiciones) {
+    for (const auto& parCandidato : misPosiciones) {
+        cout << "=========================================" << endl;
+        cout << " K-MER CANDIDATO: " << parCandidato.first << endl;
+        cout << "=========================================" << endl;
+
+        const auto& todasLasSecuencias = parCandidato.second; 
+        for (size_t j = 0; j < todasLasSecuencias.size(); j++) {
+            cout << "  Secuencia " << (j + 1) << " -> Posiciones: [ ";
+            for (int pos : todasLasSecuencias[j]) {
+                cout << pos << " ";
+            }
+            cout << "]" << endl;
+        }
+        cout << endl; 
+    }
 }
 
 
@@ -66,4 +131,8 @@ int main(){
     allKmers(vk,chains,7);
     map<string,int> analizados = kmersFrecuente(vk);
     mayoresKmers(analizados);
+    vector<string> candidatos = kmersCandidatos(analizados);
+    printKmersCandidatos(candidatos);
+    posCandidato posCandidatos = findPositionCandidatos(candidatos, chains);
+    printPositionCandidatos(posCandidatos);
 }
