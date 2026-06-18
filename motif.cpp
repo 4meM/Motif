@@ -3,7 +3,7 @@
 #include <set>
 using vectorKmers =  vector<map<string, int>*>;
 using posCandidato = map<string,vector<vector<int>>>;
-
+#define ksize 9
 void allKmers(vectorKmers &perfiles, vector<string>& chains, int k){
     for(int i = 0; i < chains.size(); i++){
         map<string, int>* perfil = new map<string, int>();
@@ -111,9 +111,64 @@ void printPositionCandidatos(const posCandidato& misPosiciones) {
     }
 }
 
+map<string,int> FindMaxPosComun(const posCandidato& misPosiciones) {
+    map<string,int> maxPosComun;
+    for(const auto pos: misPosiciones){
+        auto v=pos.second;
+        map<int,int> frecuencia;
+        for(int i=0;i<v.size();i++){
+            for(int j=0;j<v[i].size();j++){
+                frecuencia[v[i][j]]++;
+            }
+        }
+        int maxFrec=0;
+        for(auto i:frecuencia){
+            if(maxFrec<i.second){
+                maxPosComun[pos.first]=i.first;
+                maxFrec=i.second;
+            }
+        }
+    }
+    return maxPosComun;
+}
+void mostrarPosFrec(const map<string, int>& maxPosComun) {
+    cout << "===== POSICION MAS FRECUENTE POR ELEMENTO =====\n\n";
 
+    for (const auto& elemento : maxPosComun) {
+        cout << "Clave: " << elemento.first << '\n';
+        cout << "Posicion mas comun: " << elemento.second << '\n';
+        cout << "----------------------------------------\n";
+    }
+}
 
+map<string,vector<string>> ExtraerRegCommon(vector<string> chains, int k, map<string,int> startSecuence){
+    map<string,vector<string>> RegCommonExt;
+    for(auto pos:startSecuence){
+        size_t inicio=pos.second;
+        vector<string> auxsec;
+        for(string sec: chains){
+            string subcadena= sec.substr(inicio,k);
+            auxsec.push_back(subcadena);
+        }
+        RegCommonExt[pos.first]=auxsec;
+    }
+    return RegCommonExt;
+}
+void mostrarRegComExtr(const map<string, vector<string>>& RegCommonExt) {
+    cout << "===== REGIONES COMUNES EXTRAIDAS =====\n\n";
 
+    for (const auto& elemento : RegCommonExt) {
+        cout << "Clave: " << elemento.first << '\n';
+        cout << "Subcadenas extraidas:\n";
+
+        int i = 1;
+        for (const string& subcadena : elemento.second) {
+            cout << "   " << i++ << ". " << subcadena << '\n';
+        }
+
+        cout << "----------------------------------------\n";
+    }
+}
 int main(){
     vector<string> chains = {
         "ATCGTACGATGACCTGATCG",
@@ -128,11 +183,15 @@ int main(){
         "CCTATACGATGACGGAATTC",
     };
     vectorKmers vk;
-    allKmers(vk,chains,7);
+    allKmers(vk,chains,ksize);
     map<string,int> analizados = kmersFrecuente(vk);
     mayoresKmers(analizados);
     vector<string> candidatos = kmersCandidatos(analizados);
     printKmersCandidatos(candidatos);
     posCandidato posCandidatos = findPositionCandidatos(candidatos, chains);
     printPositionCandidatos(posCandidatos);
+    map<string,int> MaxposKmer=FindMaxPosComun(posCandidatos);
+    mostrarPosFrec(MaxposKmer);
+    map<string,vector<string>> RegCommExtr = ExtraerRegCommon(chains,ksize,MaxposKmer);
+    mostrarRegComExtr(RegCommExtr);
 }
