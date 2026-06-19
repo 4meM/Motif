@@ -3,7 +3,7 @@
 #include <set>
 using vectorKmers =  vector<map<string, int>*>;
 using posCandidato = map<string,vector<vector<int>>>;
-#define ksize 9
+#define ksize 7
 void allKmers(vectorKmers &perfiles, vector<string>& chains, int k){
     for(int i = 0; i < chains.size(); i++){
         map<string, int>* perfil = new map<string, int>();
@@ -169,6 +169,25 @@ void mostrarRegComExtr(const map<string, vector<string>>& RegCommonExt) {
         cout << "----------------------------------------\n";
     }
 }
+
+map<string, int> alineamientoMultple(map<string,vector<string>>& RegCommonExt){
+    map<string, int> resultado; // Mapa para retornar al final
+
+    for(auto& it : RegCommonExt){ 
+        
+        TreeGuide(it.second);
+        AlineamientoMultiple();
+        
+        for(const auto& entry : clustersMap.begin()->first->chains){
+            cout << "Cadena alineada: " << *entry << "\n";
+        } 
+
+        clustersMap.clear(); 
+    }
+
+    return resultado; 
+}
+
 int main(){
     vector<string> chains = {
         "ATCGTACGATGACCTGATCG",
@@ -194,4 +213,5 @@ int main(){
     mostrarPosFrec(MaxposKmer);
     map<string,vector<string>> RegCommExtr = ExtraerRegCommon(chains,ksize,MaxposKmer);
     mostrarRegComExtr(RegCommExtr);
+    alineamientoMultple(RegCommExtr);
 }
