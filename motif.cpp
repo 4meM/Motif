@@ -3,7 +3,7 @@
 #include <set>
 using vectorKmers =  vector<map<string, int>*>;
 using posCandidato = map<string,vector<vector<int>>>;
-#define ksize 7
+#define ksize 9
 void allKmers(vectorKmers &perfiles, vector<string>& chains, int k){
     for(int i = 0; i < chains.size(); i++){
         map<string, int>* perfil = new map<string, int>();
@@ -188,8 +188,138 @@ map<string, int> alineamientoMultple(map<string,vector<string>>& RegCommonExt){
     return resultado; 
 }
 
+vector<map<char,int>> construirMatrizFrecuencias(const vector<string>& regiones) {
+    if (regiones.empty()) return {};
+    int largo = regiones[0].size();
+    vector<map<char,int>> matriz(largo);
+    for (const string& seq : regiones) {
+        for (int i = 0; i < largo; ++i) {
+            matriz[i][seq[i]]++;
+        }
+    }
+    return matriz;
+}
+
+string obtenerConsenso(const vector<map<char,int>>& matriz) {
+    string consenso;
+    for (const auto& posMap : matriz) {
+        char baseMax = 'N';
+        int maxCount = 0;
+        for (const auto& par : posMap) {
+            if (par.second > maxCount) {
+                maxCount = par.second;
+                baseMax = par.first;
+            }
+        }
+        consenso += baseMax;
+    }
+    return consenso;
+}
+
+void imprimirMatrizFrecuencias(const vector<map<char,int>>& matriz) {
+    if (matriz.empty()) {
+        cout << "La matriz está vacía." << endl;
+        return;
+    }
+
+    cout << "\n===== MATRIZ DE FRECUENCIAS =====\n";
+    cout << "Posicion |  A  |  C  |  G  |  T  | Consenso\n";
+    cout << "---------|-----|-----|-----|-----|---------\n";
+
+    for (size_t i = 0; i < matriz.size(); ++i) {
+        int countA = 0, countC = 0, countG = 0, countT = 0;
+        for (const auto& par : matriz[i]) {
+            if (par.first == 'A') countA = par.second;
+            else if (par.first == 'C') countC = par.second;
+            else if (par.first == 'G') countG = par.second;
+            else if (par.first == 'T') countT = par.second;
+        }
+
+        char consenso = 'N';
+        int maxCount = 0;
+        if (countA > maxCount) { maxCount = countA; consenso = 'A'; }
+        if (countC > maxCount) { maxCount = countC; consenso = 'C'; }
+        if (countG > maxCount) { maxCount = countG; consenso = 'G'; }
+        if (countT > maxCount) { maxCount = countT; consenso = 'T'; }
+
+        cout << "    " << i+1 << "    |";
+        cout << "  " << countA << "  |";
+        cout << "  " << countC << "  |";
+        cout << "  " << countG << "  |";
+        cout << "  " << countT << "  |";
+        cout << "    " << consenso << "\n";
+    }
+    cout << "-----------------------------------------\n";
+    cout << "Total de secuencias: " << matriz[0].size() << "\n\n";
+}
+
+vector<double> calcularPorcentajesConservacion(const vector<map<char,int>>& matriz, int totalSecuencias) {
+    vector<double> porcentajes;
+    for (const auto& posMap : matriz) {
+        int maxCount = 0;
+        for (const auto& par : posMap) {
+            if (par.second > maxCount) maxCount = par.second;
+        }
+        double pct = (totalSecuencias > 0) ? (maxCount * 100.0 / totalSecuencias) : 0.0;
+        porcentajes.push_back(pct);
+    }
+    return porcentajes;
+}
+
+void identificarPosicionesConservadasVariables(const vector<map<char,int>>& matriz, int totalSecuencias,vector<int>& posConservadas,vector<int>& posVariables) {
+    posConservadas.clear();
+    posVariables.clear();
+    for (size_t i = 0; i < matriz.size(); ++i) {
+        int maxCount = 0;
+        for (const auto& par : matriz[i]) {
+            if (par.second > maxCount) maxCount = par.second;
+        }
+        if (maxCount == totalSecuencias) {
+            posConservadas.push_back(i);
+        } else {
+            posVariables.push_back(i);
+        }
+    }
+}
+
+void describirBasesVariables(const vector<map<char,int>>& matriz, const vector<int>& posVariables) {
+    cout << "===== BASES OBSERVADAS EN POSICIONES VARIABLES =====\n";
+    for (int pos : posVariables) {
+        cout << "Posicion " << pos+1 << ": ";
+        for (const auto& par : matriz[pos]) {
+            cout << par.first << "(" << par.second << ") ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+
+double porcentajeGlobalConservacion(const vector<double>& porcentajes) {
+    if (porcentajes.empty()) return 0.0;
+    double suma = 0.0;
+    for (double p : porcentajes) suma += p;
+    return suma / porcentajes.size();
+}
+
+void reportarMotif(const string& consenso, int longitud, 
+                   const map<string,int>& posInicioPorSecuencia,
+                   int totalSecuenciasConMotif,
+                   const vector<double>& porcentajes) {
+    cout << "\n===== REPORTE DEL MOTIF =====\n";
+    cout << "Motif (secuencia consenso): " << consenso << endl;
+    cout << "Longitud del motif: " << longitud << endl;
+    cout << "Numero de secuencias que contienen el motif: " << totalSecuenciasConMotif << endl;
+    cout << "Posiciones de inicio en cada secuencia:\n";
+    for (const auto& par : posInicioPorSecuencia) {
+        cout << "  " << par.first << ": " << par.second << endl;
+    }
+    double global = porcentajeGlobalConservacion(porcentajes);
+    cout << "Porcentaje global de conservacion: " << global << "%" << endl;
+    cout << "================================\n";
+}
+
 int main(){
-    vector<string> chains = {
+    /*vector<string> chains = {
         "ATCGTACGATGACCTGATCG",
         "GGTATACGATGACGTTACCA",
         "TTTCTACGATGACCATAGGT",
@@ -200,6 +330,16 @@ int main(){
         "TCGATACGATGACTGGCAAT",
         "AGGCTACGATGACATTCGGA",
         "CCTATACGATGACGGAATTC",
+    };*/
+    vector<string> chains = {
+        "ATCGGCTAACGTAGCTAGCTTGACCGTACGATCGATCGGATCGTAGCTAGCATCGATCGTACGATCGATGCTAGCTAGCATCGATCGATACGATCGTAGCTAGCTACGTAGCTAGCTACGTAGCTTACGATGACGGTACCGATCGATCGTAGCTAACGTA",
+        "GCTAGCTAGCATCGATCGTAGCTAGCTAGCGATCGTAGCTAGCATCGATCGATCGTAGCTAGCTAGCATCGATCGATCGTAGCTAGCTAGCATCGATACGTAGCTACGTACGATGACATCGTAGCTAGCTAACGTAGCTAGCTAGCGATCGTAGCTAGCTA",
+        "CGTAGCTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAGCTAGCATCGATCGATCGTAGCTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAGCTACGTACGATGATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTA",
+        "AACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAGCTACGTATACGATGACGCTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGT",
+        "TAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAACGTATACGATGTCCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAACG",
+        "GATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTATACGATGACGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCT",
+        "CTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTATACGATGCCGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTA",
+        "CGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAACGTAGCTAGCTAGCATCGATCGTAGCTATACGATGACCGTAGCTAACGTAGCTAGCATCGATCGTAGCTAAC",
     };
     vectorKmers vk;
     allKmers(vk,chains,ksize);
@@ -214,4 +354,40 @@ int main(){
     map<string,vector<string>> RegCommExtr = ExtraerRegCommon(chains,ksize,MaxposKmer);
     mostrarRegComExtr(RegCommExtr);
     alineamientoMultple(RegCommExtr);
+    
+    string primerKmer = RegCommExtr.begin()->first;
+    vector<string> regiones = RegCommExtr[primerKmer];
+
+    vector<map<char,int>> matriz = construirMatrizFrecuencias(regiones);
+    imprimirMatrizFrecuencias(matriz);
+    string consenso = obtenerConsenso(matriz);
+    cout << "\nSecuencia consenso: " << consenso << endl;
+
+    int totalSecuencias = regiones.size();
+    vector<double> porcentajes = calcularPorcentajesConservacion(matriz, totalSecuencias);
+    cout << "\nPorcentajes de conservacion por posicion:\n";
+    for (size_t i = 0; i < porcentajes.size(); ++i) {
+        cout << "  Pos " << i+1 << ": " << porcentajes[i] << "%" << endl;
+    }
+
+    vector<int> posConservadas, posVariables;
+    identificarPosicionesConservadasVariables(matriz, totalSecuencias, posConservadas, posVariables);
+    cout << "\nPosiciones totalmente conservadas (100%): ";
+    for (int p : posConservadas) cout << p+1 << " ";
+    cout << endl;
+    cout << "Posiciones variables: ";
+    for (int p : posVariables) cout << p+1 << " ";
+    cout << endl;
+
+    describirBasesVariables(matriz, posVariables);
+
+    double global = porcentajeGlobalConservacion(porcentajes);
+    cout << "\nPorcentaje global de conservacion: " << global << "%" << endl;
+
+    map<string,int> posInicioPorSecuencia;
+    for (size_t i = 0; i < chains.size(); ++i) {
+        string secName = "S" + to_string(i+1);
+        posInicioPorSecuencia[secName] = MaxposKmer[primerKmer];
+    }
+    reportarMotif(consenso, consenso.size(), posInicioPorSecuencia, totalSecuencias, porcentajes);
 }
